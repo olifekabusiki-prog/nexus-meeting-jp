@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:      #0A0A0A;
+  --surface: #1C1C1C;
+  --border:  #2C2C2C;
+  --text:    #F5F5F5;
+  --muted:   #666666;
+  --accent:  #E53E3E;
+  --self:    #E53E3E;
+  --other-a: #4A9EFF;
+  --other-b: #34D399;
+}
+
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+/* 録音 pulse */
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229,62,62,0.5); }
+  50%       { box-shadow: 0 0 0 12px rgba(229,62,62,0); }
+}
+.recording-pulse { animation: pulse-red 1.5s ease-in-out infinite; }
+
+/* フェードイン */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 0.25s ease-out; }
+
+/* 点滅 */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+.blink { animation: blink 1.2s ease-in-out infinite; }
+
+/* スクロールバー非表示 */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
