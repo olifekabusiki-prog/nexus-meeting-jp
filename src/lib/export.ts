@@ -1,19 +1,19 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx'
 import { saveAs } from 'file-saver'
-import type { VoiceReport, VoiceSession } from '@/types'
+import type { MeetingReport, MeetingSession } from '@/types'
 
 const ROLE_LABEL: Record<string, string> = {
-  host: '担当',
-  client: 'お客様',
-  coach: 'コーチ',
+  self: '自分',
+  other_a: '相手A',
+  other_b: '相手B',
   unknown: '不明',
 }
 
 /** 全文書き起こしテキスト（分析・資料用） */
-export function exportTranscript(session: VoiceSession, report?: VoiceReport | null): string {
+export function exportTranscript(session: MeetingSession, report?: MeetingReport | null): string {
   const date = report?.basic_info.date ?? new Date(session.started_at).toLocaleDateString('ja-JP')
   const lines: string[] = []
-  lines.push(`■ NEXUS Voice 文字起こし全文`)
+  lines.push(`■ NEXUS MeetingJP 文字起こし全文`)
   lines.push(`日時: ${date}`)
   lines.push('─'.repeat(40))
   lines.push('')
@@ -27,7 +27,7 @@ export function exportTranscript(session: VoiceSession, report?: VoiceReport | n
   return lines.join('\n')
 }
 
-function reportToLines(report: VoiceReport): string[] {
+function reportToLines(report: MeetingReport): string[] {
   const lines: string[] = []
   lines.push(`■ 基本情報`)
   lines.push(`日時: ${report.basic_info.date}`)
@@ -51,13 +51,10 @@ function reportToLines(report: VoiceReport): string[] {
   lines.push('')
   lines.push(`■ キーワード・専門用語`)
   lines.push(report.keywords.join('、'))
-  lines.push('')
-  lines.push(`■ Slide用テキスト`)
-  lines.push(report.slide_text)
   return lines
 }
 
-export async function exportToWord(report: VoiceReport, filename: string) {
+export async function exportToWord(report: MeetingReport, filename: string) {
   const children = reportToLines(report).map((line) => {
     if (line.startsWith('■')) {
       return new Paragraph({
@@ -74,8 +71,8 @@ export async function exportToWord(report: VoiceReport, filename: string) {
 
   const doc = new Document({
     sections: [{ children }],
-    creator: 'NEXUS Voice',
-    title: report.title || `商談レポート ${report.basic_info.date}`,
+    creator: 'NEXUS MeetingJP',
+    title: report.title || `議事録 ${report.basic_info.date}`,
   })
 
   const blob = await Packer.toBlob(doc)
@@ -98,6 +95,6 @@ export function downloadAudio(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url)
 }
 
-export function exportToClipboard(report: VoiceReport): string {
+export function exportToClipboard(report: MeetingReport): string {
   return reportToLines(report).join('\n')
 }
