@@ -115,7 +115,7 @@ export default function HomePage() {
             {online ? (
               <div className="space-y-3">
                 <p className="text-mtg-light text-xs leading-relaxed">
-                  Zoom / Google Meet などのオンライン会議に対応。マイクとシステム音声を同時取得し、話者を自動分離します。
+                  Zoom・Teams・Meet など、あらゆるオンライン会議ツールに対応。マイクとシステム音声を同時取得し、話者を自動分離します。
                 </p>
                 <div className="flex items-center gap-5 pt-1">
                   <div className="flex items-center gap-2 text-mtg-self">
