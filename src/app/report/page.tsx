@@ -9,7 +9,6 @@ import type { MeetingSession, MeetingReport } from '@/types'
 const STEPS = [
   { id: 'clean',  label: '文字起こしを清書・話者整理中...' },
   { id: 'report', label: '議事録レポートを生成中...' },
-  { id: 'save',   label: 'Supabaseに保存中...' },
 ]
 
 /* ---- Icons ---- */
@@ -87,22 +86,17 @@ export default function ReportPage() {
       const { report: generatedReport } = await reportRes.json()
       setReport(generatedReport)
 
-      // Step 3: 保存
+      // 保存はバックグラウンドで（UI非表示）
+      createClient().auth.getSession().then(({ data: { session: authSession } }) => {
+        if (authSession?.access_token) {
+          fetch('/api/save-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session, report: generatedReport, token: authSession.access_token }),
+          }).catch(() => {})
+        }
+      })
       setStep(2)
-      const supabase = createClient()
-      const { data: { session: authSession } } = await supabase.auth.getSession()
-      if (authSession?.access_token) {
-        await fetch('/api/save-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session,
-            report: generatedReport,
-            token: authSession.access_token,
-          }),
-        })
-      }
-      setStep(3)
     } catch (err) {
       console.error(err)
       setError('処理中にエラーが発生しました。')
