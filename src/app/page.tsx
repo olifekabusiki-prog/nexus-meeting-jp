@@ -40,7 +40,7 @@ function LoginForm() {
   const [showPw, setShowPw] = useState(false)
 
   const noAccess = params.get('error') === 'no_access'
-    ? 'ãã®ã¡ã¼ã«ã¢ãã¬ã¹ã«ã¯ã¢ã¯ã»ã¹æ¨©éãããã¾ããã'
+    ? 'このメールアドレスにはアクセス権限がありません。'
     : ''
 
   async function gateAndGo() {
@@ -49,7 +49,7 @@ function LoginForm() {
       router.replace('/home')
     } else {
       await supabase.auth.signOut()
-      setMsg('ãã®ã¡ã¼ã«ã¢ãã¬ã¹ã«ã¯ã¢ã¯ã»ã¹æ¨©éãããã¾ããã')
+      setMsg('このメールアドレスにはアクセス権限がありません。')
     }
   }
 
@@ -58,13 +58,13 @@ function LoginForm() {
     setLoading(true); setMsg('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (error) { setMsg('ã¡ã¼ã«ã¢ãã¬ã¹ã¾ãã¯ãã¹ã¯ã¼ããéãã¾ãã'); return }
+    if (error) { setMsg('メールアドレスまたはパスワードが違います。'); return }
     await gateAndGo()
   }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    if (password.length < 8) { setMsg('ãã¹ã¯ã¼ãã¯8æå­ä»¥ä¸ã§è¨­å®ãã¦ãã ããã'); return }
+    if (password.length < 8) { setMsg('パスワードは8文字以上で設定してください。'); return }
     setLoading(true); setMsg('')
     const { data, error } = await supabase.auth.signUp({
       email, password,
@@ -81,51 +81,66 @@ function LoginForm() {
       return
     }
     if (!data.session) {
-      setMsg('ç¢ºèªã¡ã¼ã«ãéä¿¡ãã¾ãããã¡ã¼ã«åã®ãªã³ã¯ãã¯ãªãã¯ãã¦ç»é²ãå®äºãã¦ãã ããã')
+      setMsg('確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。')
       return
     }
     await gateAndGo()
+  }
+
+  async function handleDemo() {
+    setLoading(true); setMsg('')
+    try {
+      const res = await fetch('/api/demo-login', { method: 'POST' })
+      if (!res.ok) { setMsg('デモは現在利用できません。'); return }
+      const { access_token, refresh_token } = await res.json()
+      await supabase.auth.setSession({ access_token, refresh_token })
+      router.replace('/home')
+    } catch {
+      setMsg('デモの起動に失敗しました。')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="min-h-dvh flex items-center justify-center bg-mtg-black px-6">
       <div className="w-full max-w-sm space-y-10">
 
-        {/* ã­ã´ */}
+        {/* ロゴ */}
         <div className="text-center space-y-1">
           <div className="text-4xl font-black tracking-[0.2em] text-white">NEXUS</div>
           <div className="text-base font-light tracking-[0.5em] text-mtg-red">MEETING JP</div>
 
-          {/* åä½è¦ä»¶ */}
+          {/* 動作要件 */}
           <div className="mt-5 space-y-2">
             <div className="flex items-center justify-center gap-2">
               <div className="flex items-center gap-1.5 text-xs text-mtg-mid border border-mtg-border rounded-full px-3 py-1 bg-mtg-dark">
                 <MonitorIcon className="w-3 h-3" />
-                <span>PCå°ç¨</span>
+                <span>PC専用</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-mtg-other-a border border-mtg-other-a/30 rounded-full px-3 py-1 bg-mtg-other-a/5">
                 <ChromeIcon className="w-3 h-3" />
-                <span>Google Chrome å°ç¨</span>
+                <span>Google Chrome 専用</span>
               </div>
             </div>
             <p className="text-mtg-border text-[11px] leading-relaxed">
-              Zoomã»Meet ãªã©ã®ãªã³ã©ã¤ã³ä¼è­°ã¯å¥ã¦ã£ã³ãã¦ã§éãã<br />
-              ãã®ã¢ããªã¯ Google Chrome ã§èµ·åãã¦ãã ããã
+              Zoom・Meet などのオンライン会議は別ウィンドウで開き、<br />
+              このアプリは Google Chrome で起動してください。
             </p>
           </div>
         </div>
 
-        {/* ãµã¤ã³ã¢ããèª¬æ */}
+        {/* サインアップ説明 */}
         {mode === 'signup' && (
           <div className="bg-mtg-surface border border-mtg-border rounded-xl p-4 text-xs text-mtg-light leading-relaxed">
-            ãã®ã¢ããªå°ç¨ã®ãã¹ã¯ã¼ããè¨­å®ãã¦ãã ããï¼8æå­ä»¥ä¸ï¼ã
+            このアプリ専用のパスワードを設定してください（8文字以上）。
           </div>
         )}
 
-        {/* ãã©ã¼ã  */}
+        {/* フォーム */}
         <form onSubmit={mode === 'login' ? handleLogin : handleSignup} className="space-y-4">
           <div>
-            <label className="block text-mtg-light text-xs mb-1.5 tracking-wider">ã¡ã¼ã«ã¢ãã¬ã¹</label>
+            <label className="block text-mtg-light text-xs mb-1.5 tracking-wider">メールアドレス</label>
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com" required autoComplete="email"
@@ -133,12 +148,12 @@ function LoginForm() {
             />
           </div>
           <div>
-            <label className="block text-mtg-light text-xs mb-1.5 tracking-wider">ãã¹ã¯ã¼ã</label>
+            <label className="block text-mtg-light text-xs mb-1.5 tracking-wider">パスワード</label>
             <div className="relative">
               <input
                 type={showPw ? 'text' : 'password'} value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder={mode === 'signup' ? '8æå­ä»¥ä¸' : 'ãã¹ã¯ã¼ã'} required
+                placeholder={mode === 'signup' ? '8文字以上' : 'パスワード'} required
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 className="w-full bg-mtg-surface border border-mtg-border rounded-xl px-4 py-3 pr-12 text-white placeholder-mtg-mid focus:outline-none focus:border-mtg-red transition-colors text-sm"
               />
@@ -169,7 +184,7 @@ function LoginForm() {
             disabled={loading || !email || !password}
             className="w-full bg-mtg-red hover:bg-mtg-red-dark text-white rounded-xl py-3.5 font-semibold tracking-wider disabled:opacity-40 active:scale-95 transition-all text-sm"
           >
-            {loading ? 'å¦çä¸­...' : mode === 'login' ? 'ã­ã°ã¤ã³' : 'ãã¹ã¯ã¼ããè¨­å®ãã¦ç»é²'}
+            {loading ? '処理中...' : mode === 'login' ? 'ログイン' : 'パスワードを設定して登録'}
           </button>
         </form>
 
@@ -178,12 +193,26 @@ function LoginForm() {
             onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setMsg('') }}
             className="text-mtg-red underline underline-offset-4"
           >
-            {mode === 'login' ? 'ååãã¹ã¯ã¼ãè¨­å®ã¯ãã¡ã' : 'ã­ã°ã¤ã³ã«æ»ã'}
+            {mode === 'login' ? '初回パスワード設定はこちら' : 'ログインに戻る'}
           </button>
           <a href="/auth/reset" className="text-mtg-mid underline underline-offset-4">
-            ãã¹ã¯ã¼ããå¿ããæ¹
+            パスワードを忘れた方
           </a>
         </div>
+
+        {/* デモボタン */}
+        <div className="text-center pt-2 border-t border-mtg-border">
+          <p className="text-mtg-border text-[11px] mb-3">アカウントをお持ちでない方</p>
+          <button
+            type="button"
+            onClick={handleDemo}
+            disabled={loading}
+            className="text-mtg-mid text-xs border border-mtg-border rounded-xl px-6 py-2.5 hover:border-mtg-light hover:text-mtg-light transition-colors disabled:opacity-40"
+          >
+            デモを試す
+          </button>
+        </div>
+
       </div>
     </div>
   )
