@@ -87,19 +87,10 @@ function LoginForm() {
     await gateAndGo()
   }
 
-  async function handleDemo() {
-    setLoading(true); setMsg('')
-    try {
-      const res = await fetch('/api/demo-login', { method: 'POST' })
-      if (!res.ok) { setMsg('デモは現在利用できません。'); return }
-      const { access_token, refresh_token } = await res.json()
-      await supabase.auth.setSession({ access_token, refresh_token })
-      router.replace('/home')
-    } catch {
-      setMsg('デモの起動に失敗しました。')
-    } finally {
-      setLoading(false)
-    }
+  function handleDemo() {
+    // Supabase認証をスキップしてデモモードで起動（cookie 1時間）
+    document.cookie = 'nexus_demo=1; path=/; max-age=3600'
+    router.replace('/home')
   }
 
   return (
