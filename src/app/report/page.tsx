@@ -4,76 +4,16 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { MeetingSession, MeetingReport } from '@/types'
-import { Document, Paragraph, TextRun, HeadingLevel, Packer, AlignmentType } from 'docx'
 
 /* ---- Processing Steps ---- */
 const STEPS = [
-  { id: 'clean',  label: 'æå­èµ·ãããæ¸æ¸ã»è©±èæ´çä¸­...' },
-  { id: 'report', label: 'è­°äºé²ã¬ãã¼ããçæä¸­...' },
+  { id: 'clean',  label: '文字起こしを清書・話者整理中...' },
+  { id: 'report', label: '議事録レポートを生成中...' },
+  { id: 'save',   label: 'Supabaseに保存中...' },
 ]
 
 /* ---- Icons ---- */
 function CheckIcon({ className }: { className?: string }) {
-
-  // PDF出力（ブラウザのprint機能を使用・日本語対応）
-  function handlePrint() {
-    window.print()
-  }
-
-  // Word出力（docxライブラリ）
-  async function handleWordExport() {
-    if (!report) return
-    const { Document, Paragraph, TextRun, HeadingLevel, Packer, AlignmentType } = await import('docx')
-    
-    const title = report.title || '議事録'
-    const date = report.basic_info?.date || ''
-    const participants = (report.basic_info?.participants || []).join('、')
-
-    const sections: Paragraph[] = [
-      new Paragraph({ text: title, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
-      new Paragraph({ text: `日時: ${date}` }),
-      participants ? new Paragraph({ text: `参加者: ${participants}` }) : null,
-      new Paragraph({ text: '' }),
-      new Paragraph({ text: 'サマリー', heading: HeadingLevel.HEADING_2 }),
-      new Paragraph({ text: report.summary || '' }),
-      new Paragraph({ text: '' }),
-    ].filter(Boolean) as Paragraph[]
-
-    if (report.topics?.length) {
-      sections.push(new Paragraph({ text: 'トピック', heading: HeadingLevel.HEADING_2 }))
-      report.topics.forEach(t => {
-        sections.push(new Paragraph({ text: t.title, heading: HeadingLevel.HEADING_3 }))
-        sections.push(new Paragraph({ text: t.content }))
-        sections.push(new Paragraph({ text: '' }))
-      })
-    }
-
-    if (report.decisions?.length) {
-      sections.push(new Paragraph({ text: '決定事項', heading: HeadingLevel.HEADING_2 }))
-      report.decisions.forEach(d => sections.push(new Paragraph({ text: `• ${d}` })))
-      sections.push(new Paragraph({ text: '' }))
-    }
-
-    if (report.next_actions?.length) {
-      sections.push(new Paragraph({ text: 'ネクストアクション', heading: HeadingLevel.HEADING_2 }))
-      report.next_actions.forEach(a => sections.push(new Paragraph({ text: `• ${a}` })))
-      sections.push(new Paragraph({ text: '' }))
-    }
-
-    if (report.keywords?.length) {
-      sections.push(new Paragraph({ text: 'キーワード', heading: HeadingLevel.HEADING_2 }))
-      sections.push(new Paragraph({ text: report.keywords.join('　') }))
-    }
-
-    const doc = new Document({ sections: [{ children: sections }] })
-    const blob = await Packer.toBlob(doc)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${title}_${date.replace(/[/:]/g, '-')}.docx`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
@@ -96,9 +36,9 @@ function ChevronUpIcon({ className }: { className?: string }) {
 }
 
 const SPEAKER_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  self:    { label: 'èªå',  color: 'text-mtg-self',    bg: 'bg-mtg-red-dim border-mtg-red/30' },
-  other_a: { label: 'ç¸æA', color: 'text-mtg-other-a', bg: 'bg-mtg-other-a/10 border-mtg-other-a/30' },
-  other_b: { label: 'ç¸æB', color: 'text-mtg-other-b', bg: 'bg-mtg-other-b/10 border-mtg-other-b/30' },
+  self:    { label: '自分',  color: 'text-mtg-self',    bg: 'bg-mtg-red-dim border-mtg-red/30' },
+  other_a: { label: '相手A', color: 'text-mtg-other-a', bg: 'bg-mtg-other-a/10 border-mtg-other-a/30' },
+  other_b: { label: '相手B', color: 'text-mtg-other-b', bg: 'bg-mtg-other-b/10 border-mtg-other-b/30' },
 }
 
 export default function ReportPage() {
@@ -111,7 +51,6 @@ export default function ReportPage() {
   useEffect(() => {
     const raw = sessionStorage.getItem('nexus_meeting_session')
     if (!raw) { router.push('/home'); return }
-
     const session: MeetingSession = JSON.parse(raw)
     run(session)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,13 +58,12 @@ export default function ReportPage() {
 
   async function run(session: MeetingSession) {
     try {
-      // Step 1: æ¸æ¸
       setStep(0)
       const rawText = session.transcript
         .map(e => {
-          const label = e.speaker_role === 'self' ? 'èªå' :
-            e.speaker_role === 'other_a' ? 'ç¸æA' :
-            e.speaker_role === 'other_b' ? 'ç¸æB' : 'ä¸æ'
+          const label = e.speaker_role === 'self' ? '自分' :
+            e.speaker_role === 'other_a' ? '相手A' :
+            e.speaker_role === 'other_b' ? '相手B' : '不明'
           return `[${label}] ${e.text}`
         })
         .join('\n')
@@ -137,7 +75,6 @@ export default function ReportPage() {
       })
       const { cleaned } = await cleanRes.json()
 
-      // Step 2: ã¬ãã¼ãçæ
       setStep(1)
       const reportRes = await fetch('/api/report', {
         method: 'POST',
@@ -147,20 +84,24 @@ export default function ReportPage() {
       const { report: generatedReport } = await reportRes.json()
       setReport(generatedReport)
 
-      // ä¿å­ã¯ããã¯ã°ã©ã¦ã³ãã§ï¼UIéè¡¨ç¤ºï¼
-      createClient().auth.getSession().then(({ data: { session: authSession } }) => {
-        if (authSession?.access_token) {
-          fetch('/api/save-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session, report: generatedReport, token: authSession.access_token }),
-          }).catch(() => {})
-        }
-      })
       setStep(2)
+      const supabase = createClient()
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      if (authSession?.access_token) {
+        await fetch('/api/save-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session,
+            report: generatedReport,
+            token: authSession.access_token,
+          }),
+        })
+      }
+      setStep(3)
     } catch (err) {
       console.error(err)
-      setError('å¦çä¸­ã«ã¨ã©ã¼ãçºçãã¾ããã')
+      setError('処理中にエラーが発生しました。')
     }
   }
 
@@ -172,17 +113,69 @@ export default function ReportPage() {
     })
   }
 
-  /* ---- å¦çä¸­ ---- */
+  function handlePrint() {
+    window.print()
+  }
+
+  async function handleWordExport() {
+    if (!report) return
+    const { Document, Paragraph, HeadingLevel, Packer, AlignmentType } = await import('docx')
+
+    const title = report.title || '議事録'
+    const date = report.basic_info?.date || ''
+    const participants = (report.basic_info?.participants || []).join('、')
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const paras: any[] = [
+      new Paragraph({ text: title, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+      new Paragraph({ text: `日時: ${date}` }),
+      participants ? new Paragraph({ text: `参加者: ${participants}` }) : null,
+      new Paragraph({ text: '' }),
+      new Paragraph({ text: 'サマリー', heading: HeadingLevel.HEADING_2 }),
+      new Paragraph({ text: report.summary || '' }),
+      new Paragraph({ text: '' }),
+    ].filter(Boolean)
+
+    if (report.topics?.length) {
+      paras.push(new Paragraph({ text: 'トピック', heading: HeadingLevel.HEADING_2 }))
+      report.topics.forEach(t => {
+        paras.push(new Paragraph({ text: t.title, heading: HeadingLevel.HEADING_3 }))
+        paras.push(new Paragraph({ text: t.content }))
+        paras.push(new Paragraph({ text: '' }))
+      })
+    }
+
+    if (report.decisions?.length) {
+      paras.push(new Paragraph({ text: '決定事項', heading: HeadingLevel.HEADING_2 }))
+      report.decisions.forEach(d => paras.push(new Paragraph({ text: `• ${d}` })))
+      paras.push(new Paragraph({ text: '' }))
+    }
+
+    if (report.next_actions?.length) {
+      paras.push(new Paragraph({ text: 'ネクストアクション', heading: HeadingLevel.HEADING_2 }))
+      report.next_actions.forEach(a => paras.push(new Paragraph({ text: `• ${a}` })))
+      paras.push(new Paragraph({ text: '' }))
+    }
+
+    if (report.keywords?.length) {
+      paras.push(new Paragraph({ text: 'キーワード', heading: HeadingLevel.HEADING_2 }))
+      paras.push(new Paragraph({ text: report.keywords.join('　') }))
+    }
+
+    const doc = new Document({ sections: [{ children: paras }] })
+    const blob = await Packer.toBlob(doc)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title}_${date.replace(/[/:]/g, '-')}.docx`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  /* ---- 処理中 ---- */
   if (!report && !error) {
     return (
       <div className="min-h-dvh bg-mtg-black flex flex-col items-center justify-center px-8 gap-8">
-      <style>{`
-        @media print {
-          body { background: white !important; color: black !important; }
-          .no-print { display: none !important; }
-          .print-content { color: black !important; background: white !important; }
-        }
-      `}</style>
         <div className="text-center space-y-1">
           <div className="text-lg font-black tracking-[0.2em] text-white">NEXUS</div>
           <div className="text-xs tracking-[0.4em] text-mtg-red">MEETING JP</div>
@@ -220,35 +213,35 @@ export default function ReportPage() {
       <div className="min-h-dvh bg-mtg-black flex flex-col items-center justify-center gap-4">
         <p className="text-mtg-red">{error}</p>
         <button onClick={() => router.push('/home')} className="text-mtg-mid underline text-sm">
-          ãã¼ã ã«æ»ã
+          ホームに戻る
         </button>
       </div>
     )
   }
 
-  /* ---- ã¬ãã¼ãè¡¨ç¤º ---- */
+  /* ---- レポート表示 ---- */
   return (
     <div className="min-h-dvh bg-mtg-black">
 
-      {/* ãããã¼ */}
+      {/* ヘッダー */}
       <header className="sticky top-0 z-10 bg-mtg-black/95 backdrop-blur border-b border-mtg-border px-5 py-4 flex items-center justify-between">
         <div>
           <div className="text-xs tracking-[0.3em] text-mtg-red font-light">MEETING JP</div>
           <div className="text-white font-bold text-sm truncate max-w-xs mt-0.5">
-            {report?.title ?? 'è­°äºé²'}
+            {report?.title ?? '議事録'}
           </div>
         </div>
         <button
           onClick={() => router.push('/home')}
           className="text-mtg-mid text-xs hover:text-white transition-colors"
         >
-          ãã¼ã ã«æ»ã
+          ホームに戻る
         </button>
       </header>
 
       <div className="max-w-2xl mx-auto px-5 py-6 space-y-6">
 
-        {/* åºæ¬æå ± */}
+        {/* 基本情報 */}
         <div className="bg-mtg-surface border border-mtg-border rounded-2xl px-5 py-4 space-y-2">
           <div className="flex items-center gap-2 text-mtg-mid text-xs">
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -258,7 +251,7 @@ export default function ReportPage() {
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
             <span>{report?.basic_info.date}</span>
-            {report?.basic_info.location && <span>Â· {report.basic_info.location}</span>}
+            {report?.basic_info.location && <span>· {report.basic_info.location}</span>}
           </div>
           {report?.basic_info.participants && report.basic_info.participants.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -271,7 +264,7 @@ export default function ReportPage() {
           )}
         </div>
 
-        {/* ãµããªã¼ */}
+        {/* サマリー */}
         <section>
           <div className="text-xs font-semibold tracking-[0.2em] text-mtg-red mb-3">SUMMARY</div>
           <div className="bg-mtg-surface border border-mtg-border rounded-2xl px-5 py-4">
@@ -279,7 +272,7 @@ export default function ReportPage() {
           </div>
         </section>
 
-        {/* ãããã¯ */}
+        {/* トピック */}
         {report?.topics && report.topics.length > 0 && (
           <section>
             <div className="text-xs font-semibold tracking-[0.2em] text-mtg-red mb-3">TOPICS</div>
@@ -307,7 +300,7 @@ export default function ReportPage() {
           </section>
         )}
 
-        {/* æ±ºå®äºé  / ãã¯ã¹ãã¢ã¯ã·ã§ã³ */}
+        {/* 決定事項 / ネクストアクション */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {report?.decisions && report.decisions.length > 0 && (
             <section>
@@ -337,7 +330,7 @@ export default function ReportPage() {
           )}
         </div>
 
-        {/* è©±èå¥çºè¨ */}
+        {/* 話者別発言 */}
         {report?.transcript_by_speaker && (
           <section>
             <div className="text-xs font-semibold tracking-[0.2em] text-mtg-red mb-3">BY SPEAKER</div>
@@ -350,7 +343,7 @@ export default function ReportPage() {
                     <div className={`text-xs font-bold tracking-wider mb-3 ${badge.color}`}>{badge.label}</div>
                     <div className="space-y-1.5">
                       {(lines as string[]).map((line, i) => (
-                        <p key={i} className="text-mtg-light text-xs leading-relaxed">Â· {line}</p>
+                        <p key={i} className="text-mtg-light text-xs leading-relaxed">· {line}</p>
                       ))}
                     </div>
                   </div>
@@ -360,7 +353,7 @@ export default function ReportPage() {
           </section>
         )}
 
-        {/* ã«ã¼ã¯ã¼ã */}
+        {/* キーワード */}
         {report?.keywords && report.keywords.length > 0 && (
           <section>
             <div className="text-xs font-semibold tracking-[0.2em] text-mtg-red mb-3">KEYWORDS</div>
@@ -398,6 +391,7 @@ export default function ReportPage() {
             Wordで保存
           </button>
         </div>
+
         <div className="pb-8" />
       </div>
     </div>
