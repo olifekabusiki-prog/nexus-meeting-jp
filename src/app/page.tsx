@@ -124,7 +124,7 @@ function LoginForm() {
               </div>
             </div>
             <p className="text-mtg-border text-[11px] leading-relaxed">
-              Zoom・Meet などのオンライン会議は別ウィンドウで開き、<br />
+              Zoom・Teams・Meet など、ご利用中のオンライン会議アプリは別ウィンドウで開き、<br />
               このアプリは Google Chrome で起動してください。
             </p>
           </div>
