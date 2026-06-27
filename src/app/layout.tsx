@@ -3,13 +3,8 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'NEXUS Meeting JP',
-  description: '会議音声をリアルタイム文字起こし・議事録化（PC Chrome専用・PWA）',
+  description: 'Meeting transcription and minutes generation app',
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'NEXUS Meeting JP',
-  },
 }
 
 export const viewport: Viewport = {
@@ -24,11 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja">
       <head>
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Meeting JP" />
       </head>
-      <body>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   )
 }
