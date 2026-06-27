@@ -1,7 +1,5 @@
 'use client'
 
-// Whisper機能は無効化（オンライン文字起こしAPIを使用）
-
 export type WhisperLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 export async function loadWhisper(
@@ -10,11 +8,18 @@ export async function loadWhisper(
   onProgress?.('ready', 100)
 }
 
-export async function transcribeBlob(
-  _blob: Blob,
-  _language = 'ja'
-): Promise<string> {
-  return ''
+export async function transcribeBlob(blob: Blob, language = 'ja'): Promise<string> {
+  try {
+    const form = new FormData()
+    form.append('file', blob, 'audio.webm')
+    form.append('language', language)
+    const res = await fetch('/api/transcribe', { method: 'POST', body: form })
+    if (!res.ok) return ''
+    const { text } = await res.json()
+    return text ?? ''
+  } catch {
+    return ''
+  }
 }
 
 export function isWhisperReady(): boolean {
