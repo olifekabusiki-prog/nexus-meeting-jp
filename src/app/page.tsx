@@ -40,7 +40,7 @@ function LoginForm() {
   const [showPw, setShowPw] = useState(false)
 
   const noAccess = params.get('error') === 'no_access'
-    ? 'このメールアドレスにはアクセス権限がありません。'
+    ? 'ãã®ã¡ã¼ã«ã¢ãã¬ã¹ã«ã¯ã¢ã¯ã»ã¹æ¨©éãããã¾ããã'
     : ''
 
   async function gateAndGo() {
@@ -49,7 +49,7 @@ function LoginForm() {
       router.replace('/home')
     } else {
       await supabase.auth.signOut()
-      setMsg('このメールアドレスにはアクセス権限がありません。')
+      setMsg('ãã®ã¡ã¼ã«ã¢ãã¬ã¹ã«ã¯ã¢ã¯ã»ã¹æ¨©éãããã¾ããã')
     }
   }
 
@@ -58,22 +58,30 @@ function LoginForm() {
     setLoading(true); setMsg('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (error) { setMsg('メールアドレスまたはパスワードが違います。'); return }
+    if (error) { setMsg('ã¡ã¼ã«ã¢ãã¬ã¹ã¾ãã¯ãã¹ã¯ã¼ããéãã¾ãã'); return }
     await gateAndGo()
   }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    if (password.length < 8) { setMsg('パスワードは8文字以上で設定してください。'); return }
+    if (password.length < 8) { setMsg('ãã¹ã¯ã¼ãã¯8æå­ä»¥ä¸ã§è¨­å®ãã¦ãã ããã'); return }
     setLoading(true); setMsg('')
     const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { emailRedirectTo: `${window.location.origin}/` },
     })
     setLoading(false)
-    if (error) { setMsg(error.message); return }
+    if (error) {
+      if (error.status === 422 || error.message?.toLowerCase().includes('already registered')) {
+        setMsg('このメールアドレスはすでに登録されています。ログインしてください。')
+        setMode('login')
+      } else {
+        setMsg(error.message)
+      }
+      return
+    }
     if (!data.session) {
-      setMsg('確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。')
+      setMsg('ç¢ºèªã¡ã¼ã«ãéä¿¡ãã¾ãããã¡ã¼ã«åã®ãªã³ã¯ãã¯ãªãã¯ãã¦ç»é²ãå®äºãã¦ãã ããã')
       return
     }
     await gateAndGo()
@@ -83,41 +91,41 @@ function LoginForm() {
     <div className="min-h-dvh flex items-center justify-center bg-mtg-black px-6">
       <div className="w-full max-w-sm space-y-10">
 
-        {/* ロゴ */}
+        {/* ã­ã´ */}
         <div className="text-center space-y-1">
           <div className="text-4xl font-black tracking-[0.2em] text-white">NEXUS</div>
           <div className="text-base font-light tracking-[0.5em] text-mtg-red">MEETING JP</div>
 
-          {/* 動作要件 */}
+          {/* åä½è¦ä»¶ */}
           <div className="mt-5 space-y-2">
             <div className="flex items-center justify-center gap-2">
               <div className="flex items-center gap-1.5 text-xs text-mtg-mid border border-mtg-border rounded-full px-3 py-1 bg-mtg-dark">
                 <MonitorIcon className="w-3 h-3" />
-                <span>PC専用</span>
+                <span>PCå°ç¨</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-mtg-other-a border border-mtg-other-a/30 rounded-full px-3 py-1 bg-mtg-other-a/5">
                 <ChromeIcon className="w-3 h-3" />
-                <span>Google Chrome 専用</span>
+                <span>Google Chrome å°ç¨</span>
               </div>
             </div>
             <p className="text-mtg-border text-[11px] leading-relaxed">
-              Zoom・Meet などのオンライン会議は別ウィンドウで開き、<br />
-              このアプリは Google Chrome で起動してください。
+              Zoomã»Meet ãªã©ã®ãªã³ã©ã¤ã³ä¼è­°ã¯å¥ã¦ã£ã³ãã¦ã§éãã<br />
+              ãã®ã¢ããªã¯ Google Chrome ã§èµ·åãã¦ãã ããã
             </p>
           </div>
         </div>
 
-        {/* サインアップ説明 */}
+        {/* ãµã¤ã³ã¢ããèª¬æ */}
         {mode === 'signup' && (
           <div className="bg-mtg-surface border border-mtg-border rounded-xl p-4 text-xs text-mtg-light leading-relaxed">
-            このアプリ専用のパスワードを設定してください（8文字以上）。
+            ãã®ã¢ããªå°ç¨ã®ãã¹ã¯ã¼ããè¨­å®ãã¦ãã ããï¼8æå­ä»¥ä¸ï¼ã
           </div>
         )}
 
-        {/* フォーム */}
+        {/* ãã©ã¼ã  */}
         <form onSubmit={mode === 'login' ? handleLogin : handleSignup} className="space-y-4">
           <div>
-            <label className="block text-mtg-light text-xs mb-1.5 tracking-wider">メールアドレス</label>
+            <label className="block text-mtg-light text-xs mb-1.5 tracking-wider">ã¡ã¼ã«ã¢ãã¬ã¹</label>
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com" required autoComplete="email"
@@ -125,12 +133,12 @@ function LoginForm() {
             />
           </div>
           <div>
-            <label className="block text-mtg-light text-xs mb-1.5 tracking-wider">パスワード</label>
+            <label className="block text-mtg-light text-xs mb-1.5 tracking-wider">ãã¹ã¯ã¼ã</label>
             <div className="relative">
               <input
                 type={showPw ? 'text' : 'password'} value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder={mode === 'signup' ? '8文字以上' : 'パスワード'} required
+                placeholder={mode === 'signup' ? '8æå­ä»¥ä¸' : 'ãã¹ã¯ã¼ã'} required
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 className="w-full bg-mtg-surface border border-mtg-border rounded-xl px-4 py-3 pr-12 text-white placeholder-mtg-mid focus:outline-none focus:border-mtg-red transition-colors text-sm"
               />
@@ -161,7 +169,7 @@ function LoginForm() {
             disabled={loading || !email || !password}
             className="w-full bg-mtg-red hover:bg-mtg-red-dark text-white rounded-xl py-3.5 font-semibold tracking-wider disabled:opacity-40 active:scale-95 transition-all text-sm"
           >
-            {loading ? '処理中...' : mode === 'login' ? 'ログイン' : 'パスワードを設定して登録'}
+            {loading ? 'å¦çä¸­...' : mode === 'login' ? 'ã­ã°ã¤ã³' : 'ãã¹ã¯ã¼ããè¨­å®ãã¦ç»é²'}
           </button>
         </form>
 
@@ -170,10 +178,10 @@ function LoginForm() {
             onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setMsg('') }}
             className="text-mtg-red underline underline-offset-4"
           >
-            {mode === 'login' ? '初回パスワード設定はこちら' : 'ログインに戻る'}
+            {mode === 'login' ? 'ååãã¹ã¯ã¼ãè¨­å®ã¯ãã¡ã' : 'ã­ã°ã¤ã³ã«æ»ã'}
           </button>
           <a href="/auth/reset" className="text-mtg-mid underline underline-offset-4">
-            パスワードを忘れた方
+            ãã¹ã¯ã¼ããå¿ããæ¹
           </a>
         </div>
       </div>
